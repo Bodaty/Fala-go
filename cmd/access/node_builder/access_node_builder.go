@@ -411,8 +411,8 @@ func (builder *FlowAccessNodeBuilder) BuildConsensusFollower() AccessNodeBuilder
 }
 
 func (builder *FlowAccessNodeBuilder) BuildExecutionDataRequester() *FlowAccessNodeBuilder {
-	var dstore datastore.Batching
-	var blobservice network.BlobService
+	var ds datastore.Batching
+	var bs network.BlobService
 
 	builder.Component("execution data service", func(node *cmd.NodeConfig) (module.ReadyDoneAware, error) {
 		err := os.MkdirAll(builder.executionDataDir, 0700)
@@ -420,32 +420,30 @@ func (builder *FlowAccessNodeBuilder) BuildExecutionDataRequester() *FlowAccessN
 			return nil, err
 		}
 
-		dstore, err := badger.NewDatastore(builder.executionDataDir, &badger.DefaultOptions)
+		ds, err = badger.NewDatastore(builder.executionDataDir, &badger.DefaultOptions)
 		if err != nil {
 			return nil, err
 		}
 
 		builder.ShutdownFunc(func() error {
-			if err := dstore.Close(); err != nil {
+			if err := ds.Close(); err != nil {
 				return fmt.Errorf("could not close execution data datastore: %w", err)
 			}
 			return nil
 		})
 
-		blobservice, err := node.Network.RegisterBlobService(engine.ExecutionDataService, dstore)
+		bs, err = node.Network.RegisterBlobService(engine.ExecutionDataService, ds)
 		if err != nil {
 			return nil, err
 		}
 
-		eds := state_synchronization.NewExecutionDataService(
+		builder.ExecutionDataService = state_synchronization.NewExecutionDataService(
 			new(cbor.Codec),
 			compressor.NewLz4Compressor(),
-			blobservice,
+			bs,
 			metrics.NewExecutionDataServiceCollector(),
 			builder.Logger,
 		)
-
-		builder.ExecutionDataService = eds
 
 		return builder.ExecutionDataService, nil
 	})
@@ -482,8 +480,8 @@ func (builder *FlowAccessNodeBuilder) BuildExecutionDataRequester() *FlowAccessN
 		edr, err := edrequester.New(
 			builder.Logger,
 			metrics.NewExecutionDataRequesterCollector(),
-			dstore,
-			blobservice,
+			ds,
+			bs,
 			builder.ExecutionDataService,
 			startHeight,
 			builder.executionDataMaxCachedEntries,
