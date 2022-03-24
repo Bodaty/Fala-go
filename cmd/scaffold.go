@@ -1074,7 +1074,7 @@ func (fnb *FlowNodeBuilder) Component(name string, f ReadyDoneFactory) NodeBuild
 // can/should be independently restarted when an irrecoverable error is encountered.
 //
 // IMPORTANT: Since a RestartableComponent can be restarted independently of the node, the node and
-// other components must not rely on it for safe operation and failures must be handled gracefully.
+// other components must not rely on it for safe operation, and failures must be handled gracefully.
 // As such, RestartableComponents do not block the node from becoming ready, and do not block
 // subsequent components from starting serially. They do start in serial order.
 //
